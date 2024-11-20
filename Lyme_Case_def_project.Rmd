@@ -206,7 +206,6 @@ k <- (mean_actual_2022_high - mean_predicted_2022_high) / mean_predicted_2022_hi
 
 # Output k
 k
-
 ```
 ### Result: k>0: Indicates that the actual incidence rates were higher than predicted, suggesting underestimation due to the lack of clinical information. k = 1.461302 is equivalent to a 146% overestimation of the incidence rate in the high-incidence jurisdiction in the year 2022.
 
@@ -216,4 +215,4 @@ k
 
 ## Can we try to reconcile the Lyme incodence data sets and bring all the years to the same comparable scale?  We will try to rescale the whole data!
 
-
+Estimate uncertainty for k with Monte Carlo simulation.
