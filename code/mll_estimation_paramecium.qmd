@@ -1,0 +1,192 @@
+---
+title: "Logistic Growth Model Exercise with Paramecium Data"
+format: html
+editor: visual
+---
+
+## Task 1: load and plot data
+
+```{r}
+library(tidyverse)
+data <- read_csv("Veilleux1.csv")
+
+plot(data$days, data$prey, type='b', col='red',
+     main='Sigmoidal growth of paramecium',
+     xlab='Time', ylab='Abundance')
+```
+
+Also look at the distribution:
+
+```{r}
+ggplot(data, aes(x = prey)) +
+  geom_histogram(bins = 50)
+```
+
+## Task 2: write a differential equation solver
+
+```{r}
+library(deSolve)
+
+logistic <- function(t, x, parms) {
+  r <- parms[1]
+  K <- parms[2]
+  
+  dx <- list(exp(r) * x * (1-x/exp(K)))
+}
+
+parameters <- c(r=log(1), k=log(100))
+x0 <- 1
+times <- seq(0,20)
+
+out <- ode(x0,
+           times = times,
+           func = logistic,
+           parms = parameters)
+head(out)
+```
+
+```{r}
+plot(out, xlab='Time', ylab='Abundance', main='Logistic growth')
+```
+
+## Task 3: estimate parameters r and K
+
+Using mle: what does the log-likelihood function look like for this dataset?
+
+```{r}
+negloglik <- function(par, data) {
+  x0 <- data$prey[1]
+  times <- data$days[-1]
+  parms <- par[1:2]
+  solution <- ode(x0, times, logistic, parms)
+  # negative log likelihood (variance is third parameter within par)
+  nll <- -sum(dnorm(data$prey, mean = solution[,2], sd=10, log=TRUE))
+}
+```
+
+Initial values:
+
+```{r}
+parms0 <- c(r = log(1), k = log(100))
+```
+
+Fit with optim:
+
+```{r, include=FALSE}
+fit <- optim(parms0, fn = negloglik, data=data)
+```
+
+Exponentiate to look at the fit parameters r and k:
+
+```{r}
+exp(fit$par)
+```
+
+Use optim again, initializing with the FIRST solution:
+
+```{r}
+fit2 <- optim(fit$par, fn = negloglik, data=data)
+exp(fit2$par)
+```
+
+Plot data with fit model:
+
+```{r}
+# Solve the equation at the fit parameters
+parms <- c(fit2$par)
+x0 <- data$prey[1]
+times <- seq(0, 20, by = 0.01)
+out <- ode(x0, times, logistic, parms)
+plot(data$days, data$prey, type='p',col='red',
+main='Sigmoidal growth of paramecium',
+xlab='Time', ylab='Abundance')
+lines(out[,1],out[,2], type='l')
+```
+
+## Task 4: Find the likelihood interval for r and k (Gaussian errors)
+
+```{r}
+# Function to calculate likelihood at given parameters
+profile_likelihood <- function(par_name, fixed_par, data, par_range) {
+  results <- data.frame(Parameter = numeric(), NLL = numeric())
+  for (value in par_range) {
+    params <- c(r = fixed_par["r"], k = fixed_par["k"])
+    params[par_name] <- value
+    nll <- negloglik(params, data)
+    results <- rbind(results, data.frame(Parameter = value, NLL = nll))
+  }
+  return(results)
+}
+
+# Estimate range around fitted parameters
+r_range <- seq(fit2$par["r"] - 0.5, fit2$par["r"] + 0.5, length.out = 100)
+k_range <- seq(fit2$par["k"] - 0.5, fit2$par["k"] + 0.5, length.out = 100)
+
+# Profile likelihoods for each parameter
+r_profile <- profile_likelihood("r", fit2$par, data, r_range)
+k_profile <- profile_likelihood("k", fit2$par, data, k_range)
+
+# Plotting
+plot(r_profile$Parameter, r_profile$NLL, type = "l", col="red",
+     main="Profile likelihood for r",
+     xlab="Parameter",
+     ylab="NLL")
+# ggplot(r_profile, aes(x = Parameter, y = NLL)) +
+#   geom_line() +
+#   ggtitle("Profile Likelihood for r")
+
+plot(k_profile$Parameter, k_profile$NLL, type = "l", col="blue",
+     main="Profile likelihood for k",
+     xlab="Parameter",
+     ylab="NLL")
+# ggplot(k_profile, aes(x = Parameter, y = NLL)) +
+#   geom_line() +
+#   ggtitle("Profile Likelihood for K")
+
+```
+
+## Task 5: Plot a heatmap of the likelihood with 1.96 confidence ellipse
+
+```{r}
+# Generate likelihood surface for heatmap
+r_vals <- seq(fit2$par["r"] - 0.5, fit2$par["r"] + 0.5, length.out = 50)
+k_vals <- seq(fit2$par["k"] - 0.5, fit2$par["k"] + 0.5, length.out = 50)
+likelihood_grid <- expand.grid(r = r_vals, k = k_vals)
+likelihood_grid$NLL <- apply(likelihood_grid, 1, function(p) negloglik(p, data))
+
+# Heatmap with confidence ellipse
+ggplot(likelihood_grid, aes(x = r, y = k, fill = NLL)) +
+  geom_tile() +
+  geom_contour(aes(z = NLL), color = "black", breaks = min(likelihood_grid$NLL) + qchisq(0.95, 2)) +
+  ggtitle("Likelihood Heatmap with 1.96 Confidence Ellipse")
+
+```
+
+## Task 6: Repeat tasks 3-4 for days 3 to 6.5
+
+```{r}
+# Filter data
+data_filtered <- data %>%
+  filter(days >= 3 & days <= 6.5)
+
+# Fit model on filtered data
+fit_filtered <- optim(parms0, fn = negloglik, data = data_filtered)
+
+# Display fitted parameters
+exp(fit_filtered$par)
+```
+
+## Task 7: Using a gamma distribution
+
+```{r}
+shape <- 2
+scale <- 1.5
+set.seed(123456)
+myData <- rgamma(n=1000, shape=shape, scale=scale)
+```
+
+```{r}
+library(dglm)
+fit <- dglm(data$prey~1, family=Gamma(link="log"), mustart=mean(data$prey))
+summary(fit)
+```

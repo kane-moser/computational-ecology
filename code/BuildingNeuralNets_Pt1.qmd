@@ -1,0 +1,601 @@
+---
+title: "Neural Nets from Scratch"
+author: "Kane Moser"
+format: html
+editor: visual
+---
+
+## Building a Neural Net from Scratch: Part 1
+
+Author: Akshaj Verma
+
+A lot of deep learning frameworks often abstract away the mechanics behind training a neural network. While this has the advantage of quickly building deep learning models, it has the disadvantage of hiding the details. It is equally important to slow down and understand how neural nets work. In this two-part series, we’ll dig deep and build our own neural net from scratch. This will help us understand, at a basic level, how those big frameworks work. The network we’ll build will contain a single hidden layer and perform binary classification using a vectorized implementation of backpropagation, all written in base-R. We will describe in detail what a single-layer neural network is, how it works, and the equations used to describe it. We will see what kind of data preparation is required to be able to use it with a neural network. Then, we will implement a neural-net step-by-step from scratch and examine the output at each step. Finally, to see how our neural-net fares, we will describe a few metrics used for classification problems and use them.
+
+In this first part, we’ll present the dataset we are going to use, the pre-processing involved, the train-test split, and describe in detail the architecture of the model. Then we’ll build our neural net chunk-by-chunk. It will involve writing functions for initializing parameters and running forward propagation.
+
+In the second part, we’ll implement backpropagation by writing functions to calculate gradients and update the weights. Finally, we’ll make predictions on the test data and see how accurate our model is using metrics such as `Accuracy`, `Recall`, `Precision`, and `F1-score`. We’ll compare our neural net with a logistic regression model and visualize the difference in the decision boundaries produced by these models.
+
+By the end of this series, you should have a deeper understanding of the math behind neural-networks and the ability to implement it yourself from scratch!
+
+```{r}
+library(tidyverse)
+set.seed(69)
+```
+
+### Architecture Definition
+
+To understand the matrix multiplications better and keep the numbers digestible, we will describe a very simple 3-layer neural net i.e. a neural net with a single hidden layer. The 1st1st layer will take in the inputs and the 3rd3rd layer will spit out an output.
+
+The input layer will have two (input) neurons, the hidden layer four (hidden) neurons, and the output layer one (output) neuron.
+
+Our input layer has two neurons because we’ll be passing two features (columns of a dataframe) as the input. A single output neuron because we’re performing binary classification. This means two output classes - 0 and 1. Our output will actually be a probability (a number that lies between 0 and 1). We’ll define a threshold for rounding off this probability to 0 or 1. For instance, this threshold can be 0.5.
+
+In a deep neural net, multiple hidden layers are stacked together (hence the name “deep”). Each hidden layer can contain any number of neurons you want.
+
+In this series, we’re implementing a single-layer neural net which, as the name suggests, contains a single hidden layer.
+
+-   `n_x`: the size of the input layer (set this to 2).
+
+-   `n_h`: the size of the hidden layer (set this to 4).
+
+-   `n_y`: the size of the output layer (set this to 1).
+
+![](images/clipboard-1311508876.png)
+
+Neural networks flow from left to right, i.e. input to output. In the above example, we have two features (two columns from the input dataframe) that arrive at the input neurons from the first-row of the input dataframe. These two numbers are then multiplied by a set of weights (randomly initialized at first and later optimized).
+
+An activation function is then applied on the result of this multiplication. This new set of numbers becomes the neurons in our hidden layer. These neurons are again multiplied by another set of weights (randomly initialized) with an activation function applied to this result. The final result we obtain is a single number. This is the prediction of our neural-net. It’s a number that lies between 0 and 1.
+
+Once we have a prediction, we then compare it to the true output. To optimize the weights in order to make our predictions more accurate (because right now our input is being multiplied by random weights to give a random prediction), we need to first calculate how far off is our prediction from the actual value. Once we have this *loss*, we calculate the gradients with respect to each weight.
+
+The gradients tell us the amount by which we need to increase or decrease each weight parameter in order to minimize the loss. All the weights in the network are updated as we repeat the entire process with the second input sample (second row).
+
+After all the input samples have been used to optimize weights, we say that one epoch has passed. We repeat this process for multiple number of epochs till our loss stops decreasing.
+
+At this point, you might be wondering what an activation function is. An activation function adds non-linearity to our network and enables it to learn complex features. If you look closely, a neural network consists of a bunch multiplications and additions. It’s linear and we know that a linear classification model will not be able to learn complex features in high dimensions.
+
+Here are a few popular activation functions -
+
+![](images/clipboard-3552234492.png)
+
+We will use `tanh()` and `sigmoid()` activation functions in our neural net. Because `tanh()` is already available in base-R, we will implement the `sigmoid()` function ourselves later on.
+
+### Dry Run
+
+For now, let’s see how the numbers flow through the above described neural-net by writing out the equations for a single sample (one input row).
+
+For one input sample $x^i$ where i is the row-number:
+
+First, we calculate the output Z from the input x. We will tune the parameters W and b. Here, the superscript in square brackets tell us the layer number and the one in parenthesis tell use the neuron number. For instance $z^{[1](i)}$ is the output from the $i$th neuron of the $1$st layer.
+
+$$
+z^{[1](i)} = W^{[1]}x^{(i)} + b^{[1](i)}
+$$
+
+Then we’ll pass this value through the `tanh()` activation function to get a.
+
+$$
+a^{[1](i)} = tanh(z^{[1](i)})
+$$
+
+After that, we’ll calculate the value for the final output layer using the hidden layer values.
+
+$$
+z^{[2](i)} = W^{[2]}a^{[1](i)} + b^{[1](i)}
+$$
+
+Finally, we’ll pass this value through the `sigmoid()` activation function and obtain our output probability.
+
+$$
+\hat{y}^i = a^{[2](i)} = \sigma(z^{[2](i)}
+$$
+
+To obtain our prediction class from output probabilities, we round off the values as follows.[y(i)prediction={1if a[2](i)>0.50otherwise (5)(5)yprediction(i)={1if a[2](i)>0.50otherwise]{.underline}
+
+Once, we have the prediction probabilities, we’ll compute the loss in order to tune our parameters (ww and bb can be adjusted using gradient-descent).
+
+Given the predictions on all the examples, we will compute the cost JJ the cross-entropy loss as follows:\
+[J=−1mm∑i=0(y(i)log(^y(i))+(1−y(i))log(1−^y(i)))(6)(6)J=−1m∑i=0m(y(i)log⁡(y^(i))+(1−y(i))log⁡(1−y^(i)))]{.underline}
+
+Once we have our loss, we need to calculate the gradients. I’ve calculated them for you so you don’t differentiate anything. We’ll directly use these values -
+
+-   dZ\[2\]=A\[2\]−YdZ\[2\]=A\[2\]−Y
+
+-   dW\[2\]=1mdZ\[2\]A\[1\]TdW\[2\]=1mdZ\[2\]A\[1\]T
+
+-   db\[2\]=1m∑dZ\[2\]db\[2\]=1m∑dZ\[2\]
+
+-   dZ\[1\]=W\[2\]T∗g\[1\]′Z\[1\]dZ\[1\]=W\[2\]T∗g\[1\]′Z\[1\] where gg is the activation function.
+
+-   dW\[1\]=1mdZ\[1\]xTdW\[1\]=1mdZ\[1\]xT
+
+-   db\[1\]=1m∑dZ\[1\]db\[1\]=1m∑dZ\[1\]
+
+Now that we have the gradients, we will update the weights. We’ll multiply these gradients with a number known as the `learning rate`. The learning rate is represented by αα.
+
+-   W\[2\]=W\[2\]−α∗dW\[2\]W\[2\]=W\[2\]−α∗dW\[2\]
+
+-   b\[2\]=b\[2\]−α∗db\[2\]b\[2\]=b\[2\]−α∗db\[2\]
+
+-   W\[1\]=W\[1\]−α∗dW\[1\]W\[1\]=W\[1\]−α∗dW\[1\]
+
+-   b\[1\]=b\[1\]−α∗db\[1\]b\[1\]=b\[1\]−α∗db\[1\]
+
+This process is repeated multiple times until our model converges i.e. we have learned a good set of weights that fit our data well.
+
+## Construct and Visualize Dataset
+
+```{r}
+planar_dataset <- function(){
+set.seed(1)
+m <- 400
+N <- m/2
+D <- 2
+x <- matrix(0, nrow = m, ncol = D)
+Y <- matrix(0, nrow = m, ncol = 1)
+a <- 4
+
+for(j in 0:1){
+ix <- seq((N*j)+1, N*(j+1))
+t <- seq(j*3.12,(j+1)*3.12,length.out = N) + rnorm(N, sd = 0.2)
+r <- a*sin(4*t) + rnorm(N, sd = 0.2)
+x[ix,1] <- r*sin(t)
+x[ix,2] <- r*cos(t)
+Y[ix,] <- j
+}
+
+d <- as.data.frame(cbind(x, Y))
+names(d) <- c('x1','x2','Y')
+d
+}
+
+
+df <- planar_dataset()
+
+
+ggplot(df, aes(x = x1, y = x2, color = factor(Y))) +
+geom_point() +
+  scale_color_viridis_d()
+```
+
+Reorganize the data to randomize for the order of samples:
+
+```{r}
+df <- df[sample(nrow(df)), ]
+head(df)
+ggplot(df, aes(x1, x2, color = factor(Y))) +
+  geom_point() +
+  scale_color_viridis_d()
+```
+
+Split data into training and testing sets:
+
+```{r}
+train_test_split_index <- 0.8*nrow(df) # split into training and testing
+train <- df[1:train_test_split_index, ] # extract first 80% rows into train set
+head(train)
+
+test <- df[(train_test_split_index+1): nrow(df), ] # last 20% for testing 
+head(test)
+```
+
+## Preprocess: Standardization
+
+Neural networks work best when the input values are standardized. So, we’ll scale all the values to to have their `mean=0` and `standard-deviation=1`.
+
+Standardizing input values speeds up the training and ensures faster convergence.
+
+To standardize the input values, we’ll use the `scale()` function in R. Note that we’re standardizing the input values (x) only and not the output values (y).
+
+```{r}
+# training:
+x_train <- scale(train[, c(1:2)]) # select columns 1 and 2 (input values only)
+y_train <- train$Y # leave output the same
+dim(y_train) <- c(length(y_train), 1) # add extra dimension to the vector 
+# testing:
+x_test <- scale(test[, c(1:2)]) # also standardize input values for testing set
+y_test <- test$Y
+dim(y_test) <- c(length(y_test), 1)
+```
+
+```{r}
+glimpse(x_train)
+```
+
+```{r}
+glimpse(y_train)
+```
+
+```{r}
+glimpse(x_test)
+```
+
+```{r}
+glimpse(y_test)
+```
+
+Because neural nets are made up of a bunch matrix multiplications, let’s convert our input and output to matrices from dataframes. While dataframes are a good way to represent data in a tabular form, we choose to convert to a matrix type because matrices are smaller than an equivalent dataframe and often speed up the computations.
+
+We will also change the shape of `x` and `y` by taking its transpose. This will make the matrix calculations slightly more intuitive as we’ll see in the second part. There’s really no difference though. Some of you might find this way better, while others might prefer the non-transposed way. I feel this this makes more sense.
+
+We’re going to use the `as.matrix()` method to construct out matrix. We’ll fill out matrix row-by-row.
+
+```{r}
+x_train <- as.matrix(x_train, byrow=TRUE)
+x_train <- t(x_train)
+y_train <- as.matrix(y_train, byrow=TRUE)
+y_train <- t(y_train)
+
+x_test <- as.matrix(x_test, byrow=TRUE)
+x_test <- t(x_test)
+y_test <- as.matrix(y_test, byrow=TRUE)
+y_test <- t(y_test)
+```
+
+```{r}
+glimpse(x_train)
+glimpse(y_train)
+glimpse(x_test)
+glimpse(y_test)
+```
+
+## Build a neural net
+
+Now that we’re done processing our data, let’s move on to building our neural net. As discussed above, we will broadly follow the steps outlined below.
+
+1.  Define the neural net architecture.
+
+2.  Initialize the model’s parameters from a random-uniform distribution.
+
+3.  Loop:
+
+    -   Implement forward propagation.
+
+    -   Compute loss.
+
+    -   Implement backward propagation to get the gradients.
+
+    -   Update parameters.
+
+### Get layer sizes
+
+A neural network optimizes certain parameters to get to the right output. These parameters are initialized randomly. However, the size of these matrices is dependent upon the number of layers in different layers of neural-net.
+
+To generate matrices with random parameters, we need to first obtain the size (number of neurons) of all the layers in our neural-net. We’ll write a function to do that. Let’s denote `n_x`, `n_h`, and `n_y` as the number of neurons in input layer, hidden layer, and output layer respectively.
+
+We will obtain these shapes from our input and output data matrices created above.
+
+`dim(x)[1]` gives us 2 because the shape of `x` is `(2, 320)`. We do the same for `dim(y)[1]`.
+
+```{r}
+getLayerSize <- function(x, y, hidden_neurons, train=TRUE) {
+  n_x <- dim(x)[1]
+  n_h <- hidden_neurons
+  n_y <- dim(y)[1]   
+  
+  size <- list("n_x" = n_x,
+               "n_h" = n_h,
+               "n_y" = n_y)
+  
+  return(size)
+}
+```
+
+```{r}
+layer_size <- getLayerSize(x_train, y_train, hidden_neurons = 4)
+layer_size # number of neurons is based on the shape of the input and output matrices
+```
+
+### Initialize parameters
+
+We are initializing based on the random uniform distribution
+
+```{r}
+initializeParameters <- function(x, list_layer_size){
+  # takes input matrix as arg and list which contains the layer sizes (number of neurons).
+  # Returns the sets of trainable parameters W1, b1 and W2, b2 which are represented as random weights matrices.
+
+    m <- dim(data.matrix(x))[2]
+    
+    n_x <- list_layer_size$n_x
+    n_h <- list_layer_size$n_h
+    n_y <- list_layer_size$n_y
+        
+    W1 <- matrix(runif(n_h * n_x), nrow = n_h, ncol = n_x, byrow = TRUE) * 0.01
+    b1 <- matrix(rep(0, n_h), nrow = n_h)
+    W2 <- matrix(runif(n_y * n_h), nrow = n_y, ncol = n_h, byrow = TRUE) * 0.01
+    b2 <- matrix(rep(0, n_y), nrow = n_y)
+    
+    params <- list("W1" = W1,
+                   "b1" = b1, 
+                   "W2" = W2,
+                   "b2" = b2)
+    
+    return (params)
+}
+```
+
+```{r}
+init_params <- initializeParameters(x_train, layer_size)
+lapply(init_params, function(x) dim(x))
+```
+
+### Define activation functions
+
+```{r}
+sigmoid <- function(x){
+  # Transforms the output of neural net layer into probability between 0 and 1.
+  # Sigmoid applied as output layer for binary classification.
+    return(1 / (1 + exp(-x))) # formula
+}
+
+# Although the tanh() function is already present in base R, I'm going to define it anyway for clarity:
+tanh <- function(x){ # Hyperbolic tangent
+  # The output of this ranges from -1 to 1, making it so the model can capture negative AND positive inputs.
+  # This helps gradient flow better for backpropagation by centering the output around 0.
+  return((exp(x) - exp(-x)) / (exp(x) + exp(-x))) # formula
+}
+
+# Plot the two functions:
+x_vec <- seq(-10,10, length.out=400)
+activ_df <- data.frame(x = x_vec,
+                       sigmoid = sigmoid(x_vec),
+                       tanh = tanh(x_vec)) %>%
+  pivot_longer(!x, names_to = "func", values_to = "y")
+ggplot(activ_df, aes(x = x, y = y, color = func)) +
+  geom_line() +
+  ggtitle("Activation Functions") +
+  theme_minimal() +
+  scale_color_viridis_d() +
+  labs(x = "x", y = "function(x)")
+```
+
+### Forward propagation
+
+```{r}
+forwardPropagation <- function(x, params, list_layer_size){
+  # Input is passed through each layer of the network where each neuron performs calculations:
+  # input vals are multiplied by weights associated with connections (determining importance of each input feature)
+  # bias term added after each calculation
+  # then activation function is applied
+  # final value passed to next layer (in this case network output, which is a prediction)
+    
+    m <- dim(x)[2]
+    n_h <- list_layer_size$n_h
+    n_y <- list_layer_size$n_y
+    
+    W1 <- params$W1
+    b1 <- params$b1
+    W2 <- params$W2
+    b2 <- params$b2
+    
+    b1_new <- matrix(rep(b1, m), nrow = n_h)
+    b2_new <- matrix(rep(b2, m), nrow = n_y)
+    
+    Z1 <- W1 %*% x + b1_new
+    A1 <- sigmoid(Z1)
+    Z2 <- W2 %*% A1 + b2_new
+    A2 <- sigmoid(Z2)
+    
+    cache <- list("Z1" = Z1,
+                  "A1" = A1, 
+                  "Z2" = Z2,
+                  "A2" = A2)
+
+    return (cache)
+}
+```
+
+Save other calculated values for backpropagation in the next step:
+
+```{r}
+fwd_prop <- forwardPropagation(x_train, init_params, layer_size)
+lapply(fwd_prop, function(x) dim(x))
+```
+
+# Part 2: Backpropagation
+
+Define cost function:
+
+```{r}
+computeCost <- function(x, y, cache) {
+  # We are using log loss, i.e. binary cross entropy loss function.
+  # Inputs: input matrix x from part 1, true labels y, and a cache (last output from part 1)
+    m <- dim(x)[2]
+    A2 <- cache$A2
+    logprobs <- (log(A2) * y) + (log(1-A2) * (1-y))
+    cost <- -sum(logprobs/m)
+    return (cost)
+}
+cost <- computeCost(x_train, y_train, fwd_prop)
+cost
+```
+
+### Backpropagation
+
+![](images/clipboard-407532553.png)
+
+Typical process outlined above. Red boxes in figure represent backpropagation; purple boxes represent forward propagation.
+
+In this case, however, we only have one hidden layer as opposed to two:
+
+![](images/clipboard-3033528128.png){width="253"}
+
+So we will write a function to calculate the gradient of the loss function relative to our parameters:
+
+```{r}
+backwardPropagation <- function(x, y, cache, params, list_layer_size){
+    
+    m <- dim(x)[2]
+    
+    n_x <- list_layer_size$n_x
+    n_h <- list_layer_size$n_h
+    n_y <- list_layer_size$n_y
+
+    A2 <- cache$A2
+    A1 <- cache$A1
+    W2 <- params$W2
+
+    dZ2 <- A2 - y
+    dW2 <- 1/m * (dZ2 %*% t(A1)) 
+    db2 <- matrix(1/m * sum(dZ2), nrow = n_y)
+    db2_new <- matrix(rep(db2, m), nrow = n_y)
+    
+    dZ1 <- (t(W2) %*% dZ2) * (1 - A1^2)
+    dW1 <- 1/m * (dZ1 %*% t(x))
+    db1 <- matrix(1/m * sum(dZ1), nrow = n_h)
+    db1_new <- matrix(rep(db1, m), nrow = n_h)
+    
+    grads <- list("dW1" = dW1, 
+                  "db1" = db1,
+                  "dW2" = dW2,
+                  "db2" = db2)
+    
+    return(grads)
+}
+```
+
+```{r}
+back_prop <- backwardPropagation(x_train, y_train, fwd_prop, init_params, layer_size)
+lapply(back_prop, function(x) dim(x))
+```
+
+```{r}
+updateParameters <- function(grads, params, learning_rate){
+
+    W1 <- params$W1
+    b1 <- params$b1
+    W2 <- params$W2
+    b2 <- params$b2
+    
+    dW1 <- grads$dW1
+    db1 <- grads$db1
+    dW2 <- grads$dW2
+    db2 <- grads$db2
+    
+    
+    W1 <- W1 - learning_rate * dW1
+    b1 <- b1 - learning_rate * db1
+    W2 <- W2 - learning_rate * dW2
+    b2 <- b2 - learning_rate * db2
+    
+    updated_params <- list("W1" = W1,
+                           "b1" = b1,
+                           "W2" = W2,
+                           "b2" = b2)
+    
+    return (updated_params)
+}
+```
+
+```{r}
+update_params <- updateParameters(back_prop, init_params, learning_rate = 0.01)
+lapply(update_params, function(x) dim(x))
+```
+
+```{r}
+trainModel <- function(x, y, num_iteration, hidden_neurons, lr){
+    
+    layer_size <- getLayerSize(x, y, hidden_neurons)
+    init_params <- initializeParameters(x, layer_size)
+    cost_history <- c()
+    for (i in 1:num_iteration) {
+        fwd_prop <- forwardPropagation(x, init_params, layer_size)
+        cost <- computeCost(x, y, fwd_prop)
+        back_prop <- backwardPropagation(x, y, fwd_prop, init_params, layer_size)
+        update_params <- updateParameters(back_prop, init_params, learning_rate = lr)
+        init_params <- update_params
+        cost_history <- c(cost_history, cost)
+        
+        if (i %% 10000 == 0) cat("Iteration", i, " | Cost: ", cost, "\n")
+    }
+    
+    model_out <- list("updated_params" = update_params,
+                      "cost_hist" = cost_history)
+    return (model_out)
+}
+```
+
+### Finally, train the model:
+
+```{r}
+EPOCHS = 60000
+HIDDEN_NEURONS = 40
+LEARNING_RATE = 0.9
+
+train_model <- trainModel(x_train, y_train, hidden_neurons = HIDDEN_NEURONS, num_iteration = EPOCHS, lr = LEARNING_RATE)
+```
+
+Compare with a simple logistic regression to evaluate performance:
+
+```{r}
+lr_model <- glm(Y ~ x1 + x2, data = train)
+lr_model
+```
+
+```{r}
+lr_pred <- round(as.vector(predict(lr_model, test[, 1:2])))
+lr_pred
+```
+
+### Test the model (make predictions)
+
+```{r}
+makePrediction <- function(x, y, hidden_neurons){
+    layer_size <- getLayerSize(x, y, hidden_neurons)
+    params <- train_model$updated_params
+    fwd_prop <- forwardPropagation(x, params, layer_size)
+    pred <- fwd_prop$A2
+    
+    return (pred)
+}
+```
+
+```{r}
+y_pred <- makePrediction(x_test, y_test, HIDDEN_NEURONS)
+y_pred <- round(y_pred)
+head(y_pred)
+```
+
+### Plot decision boundaries:
+
+```{r}
+# Create a grid over the input space
+x1_min <- min(df$x1) - 1
+x1_max <- max(df$x1) + 1
+x2_min <- min(df$x2) - 1
+x2_max <- max(df$x2) + 1
+
+grid <- expand.grid(x1 = seq(x1_min, x1_max, length.out = 100),
+                    x2 = seq(x2_min, x2_max, length.out = 100))
+
+# Logistic regression predictions
+log_reg_preds <- round(predict(lr_model, newdata = grid))
+
+# Neural network predictions
+x_grid <- as.matrix(grid)
+x_grid <- t(x_grid)
+nn_preds <- makePrediction(x_grid, matrix(0, nrow = 1), HIDDEN_NEURONS) # dummy y for prediction
+nn_preds <- round(nn_preds)
+
+# Plot the decision boundaries of both models
+grid$log_reg_preds <- log_reg_preds
+grid$nn_preds <- as.factor(nn_preds)
+
+ggplot(df, aes(x = x1, y = x2, color = factor(Y))) +
+  geom_point(alpha = 0.5) +
+  
+  # Logistic regression boundary
+  geom_contour(data = grid, aes(x = x1, y = x2, z = as.numeric(log_reg_preds)),
+               breaks = 0.5, color = "grey40", linetype = "dashed") +
+  
+  # Neural net boundary
+  geom_contour(data = grid, aes(x = x1, y = x2, z = as.numeric(nn_preds)),
+               breaks = 0.5, color = "black") +
+  
+  scale_color_viridis_d() +
+  labs(title = "Decision Boundaries: Neural Net vs Logistic Regression",
+       x = "x1", y = "x2", color = "True Class") +
+  theme_minimal()
+
+```

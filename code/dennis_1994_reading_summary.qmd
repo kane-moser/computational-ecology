@@ -1,0 +1,46 @@
+---
+title: "Dennis & Taper (1994): Density Dependence and the Parametric Bootstrap Likelihood Ratio (PBLR)"
+author: "Kane Moser"
+format: pdf
+editor: visual
+---
+
+## 
+
+In this paper, the authors introduce a new statistical test for density dependence in time series abundance data. They propose a parametric bootstrap likelihood ratio (PBLR) test to compare two nested models: (1) density-independent stochastic exponential growth and (2) density-dependent stochastic logistic growth. The underlying model includes environmental variability. They conducted many simulations to to evaluate the performance of the PBLR test, as well as applying it to real data for grizzly and elk populations in Yellowstone.
+
+The model describes population abundance $N_t$ at time $t$ as:
+
+$$
+N_{t+1} = N_t \exp(a+b N_t + \sigma Z_t)
+$$
+
+Where:
+
+-   $a$ is a constant related to the intrinsic growth rate
+
+-   $b$ is the density dependence parameter (usually negative)
+
+-   $\sigma$ is the standard deviation of environmental noise
+
+-   $Z_t$ is a standard normal random variable with a mean of 0 and a variance of 1
+
+They describe
+
+Often the authors analyze the model in a log-transformed form:
+
+$$
+X_{t+1} = X_t + a + b \exp(X_t) + \sigma Z_t
+$$
+
+where $X_t = \ln(N_t)$.
+
+As previously mentioned, the PBLR test basically compares two nested models. The first is the null hypothesis where $b=0$, and the model reduces to density-independent growth or decline; if $b<0$, the model exhibits density dependence, with growth rate declining as population size increases.
+
+There is a stochastic equilibrium, meaning there is a stationary distribution of population sizes around which the population fluctuates (as opposed to a fixed equilibrium point).
+
+Finally, the authors use maximum likelihood estimation to fit the model to real-world data (parameter estimation).
+
+They argue that it is important to be able to test for density dependence statistically because, as we all know now, it is considered a cornerstone of ecological theory. It allows us to understand population regulation, community structure, and behavior, and predict future dynamics, particularly the viability and/or risk of extinction; therefore, being able to detect its presence in real populations allows us to validate and refine our theories and improve management practices.
+
+Statistical density dependence is, however, different from *ecological* density dependence, and one cannot be treated as sole evidence for the other. This illustrates the long-running debate over the true prevalence of density dependence in nature, as well as the difficulty in demonstrating population equilibrium in the real world.

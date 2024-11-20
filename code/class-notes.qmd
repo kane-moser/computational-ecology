@@ -1,0 +1,605 @@
+---
+title: "Class Notes"
+author: "Kane Moser"
+format: html
+editor: visual
+---
+
+WORKING WITH BRANCHES IN GITHUB INSTRUCTIONS:
+
+### GitHub Workflow with Branches
+
+1.  **Clone the Repository**:
+    Each team member should clone the repository to their local machine if they haven't already:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git clone https://github.com/your-repository-url.git
+    cd your-repository`
+
+2.  **Create Your Own Branch**:
+    Each collaborator should create their own branch to work on. This keeps the work isolated until it’s ready to be merged back into the `main` branch.
+
+    To create and switch to a new branch:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git checkout -b your-branch-name`
+
+    Replace `your-branch-name` with something descriptive (e.g., `james-feature`, `bug-fix-kane`).
+
+3.  **Make Changes in Your Branch**:
+    Once you’re on your branch, make your changes as usual (edit files, add new code, etc.). After making changes:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git add .
+    git commit -m "Description of changes made"`
+
+4.  **Push Your Branch to GitHub**:
+    Push your branch to GitHub to share your work with the team.
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git push origin your-branch-name`
+
+5.  **Pull Changes Regularly**:
+    Regularly pull from `main` to keep your branch up to date with the latest changes from the team and avoid major conflicts.
+
+    First, switch back to `main`:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git checkout main`
+
+    Then pull the latest changes:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git pull origin main`
+
+    Afterward, switch back to your branch and merge `main` into it:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git checkout your-branch-name
+    git merge main`
+
+6.  **Merge Changes Back to Main**:
+    Once your work is complete and you’re ready to share it, you can merge it back into the `main` branch. First, push your branch, then create a **pull request (PR)** on GitHub.
+
+    After reviewing the changes, you or a team member can merge the pull request into `main` through the GitHub interface.
+
+7.  **Resolve Conflicts if Necessary**:
+    If there are conflicts when merging your branch into `main`, Git will tell you which files have conflicts. You’ll need to manually resolve them (by deciding which changes to keep) and then commit the resolved changes.
+
+### GitHub Workflow with Branches
+
+Instructions from our friend Mr. GPT:
+
+1.  **Clone the Repository**: Each team member should clone the repository to their local machine if they haven't already:
+
+    ``` bash
+    git clone https://github.com/your-repository-url.git
+    cd your-repository
+    ```
+
+2.  **Create Your Own Branch**: Each collaborator should create their own branch to work on. This keeps the work isolated until it’s ready to be merged back into the `main` branch.
+
+    To create and switch to a new branch:
+
+    ``` bash
+    git checkout -b your-branch-name
+    ```
+
+    Replace `your-branch-name` with something descriptive (e.g., `james-feature`, `bug-fix-kane`).
+
+3.  **Make Changes in Your Branch**: Once you’re on your branch, make your changes as usual (edit files, add new code, etc.). After making changes:
+
+    ``` bash
+    git add .
+    git commit -m "Description of changes made"
+    ```
+
+4.  **Push Your Branch to GitHub**: Push your branch to GitHub to share your work with the team.
+
+    ``` bash
+    git push origin your-branch-name
+    ```
+
+5.  **Pull Changes Regularly**: Regularly pull from `main` to keep your branch up to date with the latest changes from the team and avoid major conflicts.
+
+    First, switch back to `main`:
+
+    ``` bash
+    git checkout main
+    ```
+
+    Then pull the latest changes:
+
+    ``` bash
+    git pull origin main
+    ```
+
+    Afterward, switch back to your branch and merge `main` into it:
+
+    ``` bash
+    git checkout your-branch-name
+    git merge main
+    ```
+
+6.  **Merge Changes Back to Main**: Once your work is complete and you’re ready to share it, you can merge it back into the `main` branch. First, push your branch, then create a **pull request (PR)** on GitHub.
+
+    After reviewing the changes, you or a team member can merge the pull request into `main` through the GitHub interface.
+
+7.  **Resolve Conflicts if Necessary**: If there are conflicts when merging your branch into `main`, Git will tell you which files have conflicts. You’ll need to manually resolve them (by deciding which changes to keep) and then commit the resolved changes.
+
+### Example Workflow with Two People
+
+1.  **James creates a branch**:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git checkout -b james-feature
+    git push origin james-feature`
+
+2.  **Kane creates a branch**:
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git checkout -b kane-feature
+    git push origin kane-feature`
+
+    ``` bash
+    git checkout -b james-feature
+    git push origin james-feature
+    ```
+
+2.  **Kane creates a branch**:
+
+    ``` bash
+    git checkout -b kane-feature
+    git push origin kane-feature
+    ```
+
+
+3.  Both work on their respective branches, commit, and push their changes.
+
+4.  **Before merging into `main`**, each should pull from `main` to ensure they have the latest changes:
+
+
+    ```         
+    bash
+    ```
+
+    Copy code
+
+    `git checkout main
+    git pull origin main
+    git checkout james-feature
+    git merge main`
+
+    ``` bash
+    git checkout main
+    git pull origin main
+    git checkout james-feature
+    git merge main
+    ```
+
+
+5.  **Create a pull request** on GitHub to merge the branch into `main`.
+
+6.  After the PR is reviewed, merge it, and everyone pulls from `main` to stay updated.
+
+This structure helps minimize merge conflicts, as each team member works in their own isolated branch and only merges changes back when they are complete.
+
+## Friday 2024-08-16
+
+What is a probability?
+
+-   The chance that an event will occur
+
+-   Between 0 and 1, 0 meaning the event never happens and 1 meaning it always (or must) happen
+
+-   Categorical, ordered integer, others... (SEE BIG NOTEBOOK FOR REST OF NOTES FOR TODAY)
+
+## Monday 2024-08-19
+
+Today: why do we build models? Why is probabilistic reasoning useful?
+
+-   Modeling is fundamentally abstraction - what is abstraction?
+
+    -   Idealization, approximation, simplification of the processes occurring in the real world
+
+    -   Choosing a particular perspective for analysis (you can't look at it from every angle at the same time) - or rather, approaching the problem with a particular **purpose**
+
+-   What are some purposes for building a model? (list some verbs)
+
+    -   Explain (a phenomenon)
+
+    -   Understand
+
+    -   Visualize
+
+    -   Validate (our ideas about nature)
+
+    -   Test (a hypothesis)
+
+    -   Extrapolate
+
+    -   Predict (the state of the world in the future)
+
+    -   Adapt (adaptive management as a result of model predictions, revising experiments)
+
+    -   Forecast (special case of prediction - basically extrapolation over time)
+
+    -   Estimate (the value of an unknown, whether observable or theoretical)
+
+    -   Synthesize
+
+    -   Coherence (theories are stories about the world - are they consistent? Sanity checks)
+
+    -   **Inference**
+
+-   To choose the right model and construct it in the most useful way, you need to know your purpose.
+
+-   Why use probability theory to do these things?
+
+    -   You want to know that the conclusion you're drawing is not just due to chance
+
+    -   Example: comparing the distribution of heights between different classes
+
+        -   When do we need probability and statistics for this?
+
+            -   When we're curious about the larger groups, i.e. the population, of which our particular class would just be a sample
+
+A confidence interval is a probability statement about a summary statistic, e.g. the mean, representing the level of uncertainty about that theoretical quantity
+
+## Monday 2024-08-26
+
+Presentations (project pitches)
+
+## Wednesday 2024-08-28
+
+Presentations (project pitches)
+
+Mine:
+
+[Handling missing data: a case study in fungal disease ecology]{.underline}
+
+```{r}
+library(tidyverse)
+data <- read_csv('interaction.csv')
+
+library(igraph)
+
+# Assuming your data frame is named 'data'
+# Extract unique source (pathogen) and target (host) species
+sources <- unique(data$source_taxon_name)
+targets <- unique(data$target_taxon_name)
+
+# Create edge list
+edges <- data.frame(
+  from = data$source_taxon_name,
+  to = data$target_taxon_name
+)
+
+# Create the graph
+g <- graph_from_data_frame(edges, directed = TRUE)
+
+# Calculate node sizes based on degree
+node_sizes <- degree(g)
+node_sizes <- sqrt(node_sizes) * 10  # Adjust size for visibility
+
+# Set node colors (red for pathogen, blue for hosts)
+node_colors <- ifelse(V(g)$name %in% sources, "red", "skyblue")
+
+# Create a layout for the graph
+layout <- layout_with_fr(g)
+
+# Plot the graph
+plot(g, 
+     layout = layout,
+     vertex.size = node_sizes,
+     vertex.color = node_colors,
+     vertex.label = V(g)$name,
+     vertex.label.cex = 0.8,
+     edge.arrow.size = 0.5,
+     main = "Pathogen-Host Network")
+
+# Add a legend
+legend("bottomright", 
+       legend = c("Pathogen", "Host"),
+       col = c("red", "skyblue"),
+       pch = 19,
+       bty = "n")
+```
+
+```{r}
+# Install and load required package
+if (!require(DiagrammeR)) install.packages("DiagrammeR")
+library(DiagrammeR)
+
+# Create the flowchart
+flowchart <- grViz("
+  digraph flowchart {
+    # Node definitions
+    node [shape = rectangle, style = filled, fillcolor = lightblue]
+    A [label = 'Collect Data']
+    B [label = 'Identify Missing Data']
+    C [label = 'Determine Missing Data Type', shape = diamond]
+    D [label = 'Not Missing At Random\n(MNAR)']
+    E [label = 'Missing At Random\n(MAR)']
+    F [label = 'Missing Completely\nAt Random (MCAR)']
+    G [label = 'Apply Handling Methods']
+    H [label = 'Random Forests']
+    I [label = 'Multiple Imputation by\nChained Equations (MICE)']
+    J [label = 'Generalized Additive\nModels (GAM)']
+    K [label = 'Compare Results']
+
+    # Edge definitions
+    A -> B
+    B -> C
+    C -> D [label = 'MNAR']
+    C -> E [label = 'MAR']
+    C -> F [label = 'MCAR']
+    D -> G
+    E -> G
+    F -> G
+    G -> H
+    G -> I
+    G -> J
+    H -> K
+    I -> K
+    J -> K
+  }
+")
+
+# Display the flowchart
+flowchart
+
+# Save the flowchart as an image file (optional)
+#export_graph(flowchart, file_name = "fungal_pathogen_data_approach_simplified.png", file_type = "png", width = 1000, height = 800)
+```
+
+# Friday 2024-09-13
+
+[**Non-parametric models**]{.underline}
+
+-   Did not understand, didn't do the correct reading
+
+# Monday 2024-09-16
+
+[**Parametric models**]{.underline}
+
+-   Method of Moments vs. Maximum Likelihood Estimator
+
+    -   The property of efficiency is really what separates MLE
+
+-   Maximum likelihood
+
+    -   Theory that claims that there will be one value of the parameter in question that will maximize the likelihood of the observed data.
+
+    -   Explained well [here](https://towardsdatascience.com/probability-concepts-explained-maximum-likelihood-estimation-c7b4342fdbb1) in terms of the difference between likelihood and probability:
+
+        $$
+        L(\mu,\sigma; data) = P(data; \mu,\sigma)
+        $$
+
+    -   If those expressions are equal, why are L and P different? Why does it matter?
+
+    -   Because P is *“the probability density of observing the data with model parameters μ and σ”,* whereas L is *“the likelihood of the parameters μ and σ taking certain values given that we’ve observed a bunch of data.”*
+
+-   Why use log likelihood or negative log likelihood instead of calculating regular maximum likelihood?
+
+    -   Bc it's easier, and the natural log is a monotonically increasing function (i.e. as x increases, y also increases. This is important because it ensures that the maximum value of the log of the probability occurs at the same point as the original probability function.
+
+```{r}
+dnorm(14, 90, by = 1)
+```
+
+# 2024-09-18
+
+Group project notes:
+
+-   Articulate question
+
+-   Articulate exactly how and why this project requires some kind of "non-standard" statistical reasoning
+
+-   YOU ARE LEADING THE DISCUSSION ON THE READING NEXT WEEK ON MONDAY WITH JO
+
+Today:
+
+[**Confidence intervals**]{.underline}
+
+# Wednesday 2024-09-25
+
+[**Recreating the PBLR model from Dennis (1994)**]{.underline}
+
+```{r}
+# Load required packages
+library(stats4)
+
+# Grizzly bear population data from Table 3
+N_t <- c(33, 47, 36, 57, 34, 48, 39, 59, 35, 64, 34, 38, 36, 37, 41, 39, 51)
+
+# Safe logarithm function to avoid log(0) or negative values
+safe_log <- function(x) {
+  return(log(pmax(x, 1e-10)))  # Avoid log(0) by setting a small lower bound
+}
+
+# Log-likelihood function for the stochastic logistic model with debugging
+log_likelihood_model2 <- function(a, b, sigma, N_t) {
+  sigma <- pmax(sigma, 1e-5)  # Impose a lower bound on sigma to prevent zero variance
+  ll <- 0
+  for (t in 2:length(N_t)) {
+    mean_val <- safe_log(N_t[t-1]) + a + b * N_t[t-1]
+    variance <- sigma^2
+    log_val <- dnorm(safe_log(N_t[t]), mean = mean_val, sd = sqrt(variance), log = TRUE)
+    
+    if (!is.finite(log_val)) {
+      print(paste("Non-finite value detected at t =", t, "with values: mean =", mean_val, ", variance =", variance))
+    }
+    
+    ll <- ll + log_val
+  }
+  return(-ll)  # Return negative log-likelihood for minimization
+}
+
+# Log-likelihood function for Model 1 (b = 0) with debugging
+log_likelihood_model1 <- function(a, sigma, N_t) {
+  sigma <- pmax(sigma, 1e-5)  # Impose a lower bound on sigma to prevent zero variance
+  ll <- 0
+  for (t in 2:length(N_t)) {
+    mean_val <- safe_log(N_t[t-1]) + a
+    variance <- sigma^2
+    log_val <- dnorm(safe_log(N_t[t]), mean = mean_val, sd = sqrt(variance), log = TRUE)
+    
+    if (!is.finite(log_val)) {
+      print(paste("Non-finite value detected at t =", t, "with values: mean =", mean_val, ", variance =", variance))
+    }
+    
+    ll <- ll + log_val
+  }
+  return(-ll)  # Return negative log-likelihood for minimization
+}
+
+# Maximum Likelihood Estimation for Model 1
+mle_model1 <- mle(minuslogl = function(a, sigma) log_likelihood_model1(a, sigma, N_t), 
+                  start = list(a = 0.1, sigma = 0.5), method = "L-BFGS-B", lower = c(-Inf, 1e-5))
+
+# Maximum Likelihood Estimation for Model 2
+mle_model2 <- mle(minuslogl = function(a, b, sigma) log_likelihood_model2(a, b, sigma, N_t), 
+                  start = list(a = 0.1, b = -0.01, sigma = 0.5), method = "L-BFGS-B", lower = c(-Inf, -Inf, 1e-5))
+
+# Extract log-likelihood values
+logL_model1 <- logLik(mle_model1)
+logL_model2 <- logLik(mle_model2)
+
+# Likelihood Ratio Test statistic
+LR_statistic <- -2 * (logL_model1 - logL_model2)
+
+# Perform Parametric Bootstrap (PBLR) for critical values
+bootstrap_stat <- function(n_bootstrap = 1000) {
+  LR_bootstrap <- numeric(n_bootstrap)
+  params_model1 <- coef(mle_model1)  # Parameters from Model 1
+  
+  for (i in 1:n_bootstrap) {
+    # Simulate data from Model 1
+    N_sim <- numeric(length(N_t))
+    N_sim[1] <- N_t[1]
+    
+    for (t in 2:length(N_sim)) {
+      N_sim[t] <- exp(safe_log(N_sim[t-1]) + rnorm(1, mean = params_model1["a"], sd = params_model1["sigma"]))
+    }
+    
+    # Fit both models to the simulated data
+    mle_boot_model1 <- mle(minuslogl = function(a, sigma) log_likelihood_model1(a, sigma, N_sim), 
+                           start = list(a = 0.1, sigma = 0.5), method = "L-BFGS-B", lower = c(-Inf, 1e-5))
+    
+    mle_boot_model2 <- mle(minuslogl = function(a, b, sigma) log_likelihood_model2(a, b, sigma, N_sim), 
+                           start = list(a = 0.1, b = -0.01, sigma = 0.5), method = "L-BFGS-B", lower = c(-Inf, -Inf, 1e-5))
+    
+    logL_boot1 <- logLik(mle_boot_model1)
+    logL_boot2 <- logLik(mle_boot_model2)
+    
+    # Compute likelihood ratio statistic for bootstrap sample
+    LR_bootstrap[i] <- -2 * (logL_boot1 - logL_boot2)
+  }
+  
+  return(LR_bootstrap)
+}
+
+# Example run of bootstrap
+bootstrap_results <- bootstrap_stat(n_bootstrap = 1000)
+
+# Compute critical value and p-value from bootstrap
+critical_value <- quantile(bootstrap_results, 0.95)
+p_value <- mean(bootstrap_results >= LR_statistic)
+
+# Output results
+list(
+  LR_statistic = LR_statistic,
+  critical_value = critical_value,
+  p_value = p_value
+)
+
+```
+
+# Monday 2024-09-30
+
+[**Intro to machine learning**]{.underline}
+
+When and why would you choose a ML approach as opposed to classic stats etc?
+
+-   'Connectionist paradigm' - see <https://plato.stanford.edu/entries/connectionism/>
+
+-   Pattern recognition - see background on computer vision, convolutional neural nets
+
+-   In ML, the thing you want to predict is called the label (often called y) - typically categorical & unordered, aka response
+
+    -   Things being used to predict the label - input features or predictors (often called x)
+
+    $y$ \~ $x$ read as "y is distributed as x" - this terminology is borrowed from statisticians
+
+    -   Features = covariates
+
+Neural networks - the connectionist paradigm
+
+Ensembles
+
+Support vector machines
+
+# Wednesday 2024-10-02
+
+Paper discussion: Lucas TCD (2020). A translucent box: Interpretable machine learning in ecology.
+
+# Friday 2024-10-11
+
+[**Computational/Statistical "Experiments"**]{.underline}
+
+**Example: Seasonal Ebola mathematical project**
+
+-   Fruit tree attractors serve as hubs...etc
+
+-   This is the counterpart to my model (I should talk to Mozzamil more about this)
+
+**Creation of a workflow**
+
+Data -\> pre-process -\> train/test -\> mod1 -\> cross-validation -\> mod2 -\> cross-validation \[...\]

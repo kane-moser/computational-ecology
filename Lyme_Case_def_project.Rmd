@@ -1,0 +1,218 @@
+---
+title: "Lyme_Cases_Project"
+author: "James ONI"
+date: "2024-11-13"
+output:
+  word_document: default
+  html_document: default
+---
+## Background:
+
+To make the most of epidemiological data, consistency in the pattern of data collection is needed. This is important for a good understanding of any disease and to inform intervention. Lyme disease has increased in incidence, becoming one of the most common and widely distributed pathogens in the United States (Mead et al., 2024). In the United States, it is estimated that there are 476,000 Lyme disease cases per year. While mortality associated with Lyme disease is rare, its impacts on public health make it important to understand how this disease spreads using existing data on incidence rates.
+Since Lyme was first described by Steere et al. (1977), public health organizations like the CDC have developed and revised their surveillance conditions based on clinical and laboratory criteria. Case definitions or surveillance case definitions are established at the state and local levels. This ultimately ensures that cases are being counted consistently. Currently, the CDC has done case definitions six times—in the years 1995, 1996, 2008, 2011, 2017, and 2022, with the most radical change being in the year 2022. Under the latest revision, reporting criteria for low-incidence areas changed minimally, requiring the collection of both clinical and laboratory data to identify and classify cases. In high-incidence areas, however, cases are reportable as probable cases based on positive laboratory results alone, absent any clinical information, begging the question of how much influence the lack of complementary clinical information has on incidence rate reports, since high-incidence jurisdictions report cases based on laboratory evidence alone.
+Although these changes improve the standardization of surveillance across jurisdictions, they preclude detailed comparisons with historical data, therefore making effective deployment difficult. We observed that after the implementation of a revised surveillance case definition in 2022, the number of reported Lyme disease cases in the United States increased 68.5% over the average reported during 2017–2019; in high-incidence jurisdictions, the number of cases increased 72.9%, whereas, in low-incidence jurisdictions, the number of cases increased 10.0% (Kugela et al., 2024). One outstanding question is whether these changes in reported cases are due to the case redefinition or a true reflection of the increasing disease burden. Therefore, reconciling these datasets to a scale that makes them comparable is critical for their effective usage in public health analysis.
+
+## Questions:
+1.	How does the pre-2022 case definition relate to the 2022 redefinition?
+2.  How could the absence of clinical information influence the reporting rate in high-incidence areas?
+
+### Note: We are using Lyme incidence data from the year 2008 to 2022 across 51 states. Sixteen of these states are categorized as belonging to the high-incidence jurisdiction and the remaining 35 as low-incidence jurisdiction.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Load Packages}
+library(deSolve)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(lmtest)   # For statistical tests
+library(sandwich) # For robust standard errors
+library(zoo)      # For time series manipulation
+library(segmented) # For interrupted time series
+```
+
+
+
+Note: We are using a Lyme incidence data from the year 2008 to 2022 across 51 states. Sixteen of these states are categorized as belonging to the high-incidence jurisdiction and the remaining 35 as low-incidence jurisdiction. 
+```{r Data}
+Lyme_data <- read.csv ("Lyme_jurisdiction_data.csv")
+head(Lyme_data); tail(Lyme_data)
+str(Lyme_data)
+summary(Lyme_data)
+
+#Imprt the second data
+data2 <- read.csv ("Lyme_Incidence_by_States.csv")
+head(data2)
+
+#I just want to join these two datasets, by states
+
+Combined_data <- inner_join(Lyme_data, data2, by="states")
+head(Combined_data) 
+
+#This is not even what I need. I just need a simple dataset with columns for all the years and another for all the jurisdiction.
+fin_data <- Combined_data[, -2:-7] #excludes column 2 to 7
+head(fin_data)
+#view(fin_data)
+
+#write.csv(fin_data, file="Merged_Lyme_data.csv")
+
+```
+
+```{r, modifyData}
+# Pivot to get desired columns
+Final_Lyme_data<-fin_data%>%
+  pivot_longer(cols = 3:17, names_to = "year", values_to = "incidence_rate")
+str(Final_Lyme_data)
+
+#I need to remove x attached to the years
+Final_Lyme_data <- Final_Lyme_data %>%
+  mutate(year = str_remove(year, "^X")) #drop X attached to the years
+```
+
+## Test
+
+```{r pressure, echo=FALSE}
+# Separate data into high- and low-incidence jurisdictions
+high_incidence <- Final_Lyme_data %>% filter(jurisdiction== "high")
+low_incidence <- Final_Lyme_data%>% filter(jurisdiction == "low")
+```
+
+### We tried the interrupted time series analysis, but our desire to find something more basic and relatable combined with the complexity with its interpretability made us drop it. We therefore, resorted to a more generic approach.
+
+## Generic Approach
+
+Our thought process: We tried to consider our data in this way:
+The Lyme incidence records pre-2022 in both high and low jurisdictions are probably short of the true incidence record. Let the records before 2022, using both lab and clinical tests be labelled P for low jurisdiction and P2  for high jurisdiction.  Q will represent incidence rates from high jurisdiction for the year 2022 which do not require clinical examination (based on the 2022 case redefinition for high-incidence jurisdiction).
+
+```{r}
+
+# Label data as P or Q based on the criteria
+Final_Lyme_data <- Final_Lyme_data %>%
+  mutate(Label = ifelse((jurisdiction == "low"), "P", 
+                        ifelse((year < 2022 & jurisdiction == "high"), "P2", "Q")))
+```
+
+
+Now, we decided to approach this problem this way:
+We try to find patterns in incidence rate across years (maybe the rate of increase from one year to another), separately for low- and high-jurisdiction. This should be done for all years in the low-incidence jurisdiction and for all years, except, 2022 for the high-incidence jurisdiction.
+
+We hope that it tells us something about the rate of increase in incidence rate from one year to the other. We can then use our knowledge of this rate to see how much our estimate for 2022 in the high-incidence jurisdiction differs from the actual reported value.
+
+This approach focuses on identifying trends in year-over-year increases in incidence rates, and then comparing the 2022 high-incidence value to the expected rate based on previous years. We can follow these steps to implement it:
+
+### Calculate Yearly Rate of Increase: For each jurisdiction (low- and high-incidence), calculate the rate of increase in incidence rate between consecutive years, excluding 2022 for high-incidence jurisdictions.
+```{r Yearly Rate of Increase}
+# Step 1: Calculate Yearly Rate of Increase
+high_pre2022_data <- Final_Lyme_data %>%
+  filter(Label == "P2") %>%
+  group_by(states) %>% 
+  arrange(year) %>%
+  mutate(rate_increase = (incidence_rate - lag(incidence_rate)) / lag(incidence_rate)) %>%
+  mutate(rate_increase = ifelse(is.nan(rate_increase), 0, rate_increase))%>%
+  filter(!is.infinite(rate_increase) & !is.na(rate_increase))  # Remove rows with NA or Inf in rate_increase
+
+low_data <- Final_Lyme_data %>%
+  filter(Label == "P") %>%
+  group_by(states) %>% 
+  arrange(year) %>%
+  mutate(rate_increase = (incidence_rate - lag(incidence_rate)) / lag(incidence_rate)) %>%
+   mutate(rate_increase = ifelse(is.nan(rate_increase), 0, rate_increase))%>%
+  filter(!is.infinite(rate_increase) & !is.na(rate_increase))  # Remove rows with NA or Inf in rate_increase
+
+
+high_2022_data <- Final_Lyme_data %>%
+  filter(Label == "Q" & jurisdiction=="high") %>%
+  group_by(states) %>% 
+  arrange(year) %>%
+   mutate(rate_increase = (incidence_rate - lag(incidence_rate)) / lag(incidence_rate)) %>%
+    mutate(rate_increase = ifelse(is.nan(rate_increase), 0, rate_increase))%>%
+  filter(!is.infinite(rate_increase) & !is.na(rate_increase))  # Remove rows with NA or Inf in rate_increase
+
+### Note: Our values are bounded between -1 and +inf; 0=nothing change; 1=double! But incidence rate can triple, etc (value>1)
+#Note that NAs could be true zero values. For example, if year1=o and year2=0, R calculates it as NaN, but in actual sense, we can say there is no change = 0, therefore NaNs==0
+#Again, For example: if year2=1 and year 1=0, r will be calculated as (year2-year1)/year1 = ((1-0)/0) = inf
+```
+
+
+```{r Step2}
+# Step 2: Calculate the Average Rate of Increase for Each Jurisdiction
+avg_increase_high <- high_pre2022_data %>% summarize(avg_rate_increase = mean(rate_increase, na.rm = TRUE)) %>% pull(avg_rate_increase)
+avg_increase_low <- low_data %>% summarize(avg_rate_increase = mean(rate_increase, na.rm = TRUE)) %>% pull(avg_rate_increase)
+```
+
+
+### We will now have to predict the 2022 high-incidence rate based on average increase
+Here we will use the incidence rate from 2021 in high-incidence jurisdictions, along with the calculated average yearly rate of increase, to predict what the 2022 incidence rate would have been if clinical data were included. This approach provides a predicted 2022 incidence rate based on historical trends, allowing for comparison with the actual 2022 rate that relied solely on lab data. This comparison can reveal how the exclusion of clinical data in high-incidence jurisdictions may have impacted the reported rate in 2022.
+
+```{r, Step3}
+# Step 1: Get the 2021 incidence rate for high-incidence jurisdiction
+last_incidence_2021_high <- high_pre2022_data %>%
+  filter(year == 2021) %>%
+  pull(incidence_rate)
+
+# Step 2: Predict the 2022 incidence rate
+predicted_2022_high <- last_incidence_2021_high * (1 + avg_increase_high)
+
+# Output the predicted value
+mean_predicted_2022_high <- mean(predicted_2022_high)
+
+```
+
+## Let us compare with the Actual incidence rate reported in the data
+We will compare the predicted value with the actual 2022 data to estimate the effect of the case definition change.
+```{r Step4}
+# Step 3: Retrieve the actual 2022 incidence rate
+actual_2022_high <- Final_Lyme_data %>%
+  filter(Label == "Q") %>%
+  pull(incidence_rate)
+
+mean_actual_2022_high <- mean(actual_2022_high)
+# Step 4: Calculate the difference
+difference_2022 <- mean_actual_2022_high - mean_predicted_2022_high
+
+# Output the difference
+difference_2022
+```
+
+
+```{r Result}
+# Print results
+cat("The Mean Predicted 2022 Incidence Rate for High-Incidence Jurisdiction is:", mean_predicted_2022_high, "\n")
+cat("The Mean Actual 2022 Incidence Rate for High-Incidence Jurisdiction is:", mean_actual_2022_high, "\n")
+cat("The difference due to lack of clinical data in 2022 is:", difference_2022, "\n")
+
+```
+
+Can we come up with a single parameter k by which we can tell how impact the lack of clinical information has on incidence rate in 2022, given this result?
+To derive a single parameter (let's say k) that quantifies the impact of the lack of clinical information on the incidence rate in 2022, we can express k as the relative difference between the actual and predicted 2022 incidence rates, aggregated across all states in the high-incidence jurisdiction.
+
+
+We can calculate \( k \) as:
+
+\[
+k = \frac{\text{mean of actual 2022 incidence rate} - \text{mean of predicted 2022 incidence rate}}{\text{mean of predicted 2022 incidence rate}}
+\]
+
+```{r Parameter}
+# Calculate k
+k <- (mean_actual_2022_high - mean_predicted_2022_high) / mean_predicted_2022_high
+
+# Output k
+k
+
+```
+### Result: k>0: Indicates that the actual incidence rates were higher than predicted, suggesting underestimation due to the lack of clinical information. k = 1.461302 is equivalent to a 146% overestimation of the incidence rate in the high-incidence jurisdiction in the year 2022.
+
+
+
+## Next Step - if time permits:
+
+## Can we try to reconcile the Lyme incodence data sets and bring all the years to the same comparable scale?  We will try to rescale the whole data!
+
+

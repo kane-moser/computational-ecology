@@ -1,0 +1,330 @@
+---
+title: "Group Project: Climate Change & Lyme Disease Range Shift"
+author: "James Oni, Nicholas Adam, Kane Moser, Josiah Kaderis"
+format: html
+editor: visual
+---
+
+# Project Design:
+
+-   x: Total case count
+
+-   y: Cases confirmed by **lab test + clinical exam**
+
+-   z: Cases confirmed by **lab test only**
+
+With this setup, you can calculate proportions to understand how the change in case definition affects reporting across incidence categories. Specifically:
+
+qy = y/x: Proportion of cases confirmed by lab test + clinical exam
+
+qz = z/x: Proportion of cases confirmed by lab test only
+
+## **1. Calculate Total Cases, Lab+Exam, and Lab Only Cases**
+
+Calculate x, y, and z for each year and incidence category (low/high)
+
+```{r}
+data <- data %>%
+  group_by(Year, Incidence) %>%
+  summarise(x = sum(Total_Cases),
+            y = sum(Lab_Exam_Cases),
+            z = sum(Lab_Only_Cases))
+```
+
+## 2. Calculate proportions qy and qz
+
+Calculate the proportions to understand the relative frequency of each confirmation type. This will let us see if lab-only cases became more common in high-incidence areas after the 2022 definition change.
+
+```{r}
+data <- data %>%
+    mutate(
+        q_y = y / x,  # Proportion of lab+exam confirmed cases
+        q_z = z / x   # Proportion of lab-only confirmed cases
+    )
+```
+
+​
+
+Calculate the proportions to understand the relative frequency of each confirmation type. This will let you see if lab-only cases became more common in high-incidence areas after the 2022 definition change.
+
+# Code
+
+ITS analysis vignette for reference: https://rpubs.com/chrissyhroberts/1006858 Working with Census data through R API: https://walker-data.com/census-r/an-introduction-to-tidycensus.html
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+
+case_data <- read_csv('data/data_join.csv')
+glimpse(case_data)
+# Add interruption/intervention periods where each case definition change occurs:
+case_data <- case_data %>%
+  mutate(Intervention_Period = case_when(
+    Year < 2011 ~ "pre_2011",
+    Year >= 2011 & Year < 2017 ~ "2011_to_2016",
+    Year >= 2017 & Year < 2022 ~ "2017_to_2022",
+    Year >= 2022 ~ "2022_and_after")
+  )
+
+```
+
+```{r}
+library(sf)
+library(geodata)
+library(tidyverse)
+library(usmapdata)
+library(raster)
+library(tools)
+select <- dplyr::select
+
+# Read in US shapefile
+shape <- read_sf('tl_2022_us_state/tl_2022_us_state.shp') %>%
+  mutate(State = NAME) %>%
+  select(!NAME)
+
+# Get climate data
+# zip_folder <- "ppt-data-zip"
+# zip_files <- list.files(zip_folder, pattern = "\\.zip$", full.names = TRUE)
+# clim_zip <- "PRISM_ppt_stable_4kmM3_2008_bil.zip"
+# output_dir <- "ppt-data"
+# 
+# # Loop over each .zip file
+# for (zip_file in zip_files) {
+#   
+#   # Create a temporary directory to unzip files
+#   unzip_dir <- tempdir()
+#   
+#   # Unzip the contents
+#   unzip(zip_file, exdir = unzip_dir)
+#   
+#   # List all the .bil files in the unzipped directory
+#   bil_files <- list.files(unzip_dir, pattern = "\\.bil$", full.names = TRUE)
+#   
+#   # Loop over each .bil file and process it
+#   for (bil_file in bil_files) {
+#     # Load the .bil file as a raster
+#     raster_data <- raster(bil_file)
+#     
+#     # Extract raster values and coordinates (lat, long)
+#     values <- getValues(raster_data)
+#     coordinates <- coordinates(raster_data)
+#     
+#     # Create a data frame
+#     df <- data.frame(
+#       longitude = coordinates[, 1],  # Longitudes
+#       latitude = coordinates[, 2],   # Latitudes
+#       value = values                 # Raster values
+#     )
+#     
+#     # Remove any rows with NA values (optional)
+#     df_clean <- na.omit(df)
+#     
+#     # Create a CSV output file name using the zip and bil file names
+#     csv_filename <- paste0(file_path_sans_ext(basename(zip_file)), "_", 
+#                            file_path_sans_ext(basename(bil_file)), ".csv")
+#     
+#     # Save the CSV file to the output directory
+#     write_csv(df_clean, file.path(output_dir, csv_filename))
+#   }
+#   
+#   # Optionally clean up the temporary directory
+#   unlink(unzip_dir, recursive = TRUE)
+# }
+# 
+# ppt_data_list <- list.files("ppt-data", pattern = "\\.csv$", full.names = TRUE)
+# 
+# years <- as.numeric(gsub(".*_(\\d{4})_bil\\.csv$", "\\1", basename(ppt_data_list)))
+# 
+# df_list <- lapply(seq_along(ppt_data_list), function(i) {
+#   df <- read.csv(ppt_data_list[i])
+#   df$year <- years[i]  # Add the "year" column based on extracted years
+#   return(df)
+# })
+# 
+# combined_df <- bind_rows(df_list)
+# write_csv(combined_df, "ppt-data/combined_ppt.csv")
+
+combined_ppt <- read_csv("ppt-data/combined_ppt.csv") # get precip data
+glimpse(combined_ppt)
+# Read in Lyme case data
+case_data <- read_csv("Lyme_Disease_Incidence_Rates_by_State_or_Locality.csv")
+# Remove special characters from "State" column
+case_data$State <- str_remove_all(case_data$State, "[^[:alnum:] ]")
+# Put data in long format
+case_data <- case_data %>% pivot_longer(!State, names_to = "Year", values_to = "Incidence")
+# Join US map shape data with case data
+data_join <- shape %>%
+  left_join(case_data, by = "State") %>%
+  filter(State != c("United States Virgin Islands", "Commonwealth of the Northern Mariana Islands", "American Samoa", "Puerto Rico", "Guam", "Hawaii", "Alaska")) %>%
+  na.omit()
+combined_ppt <- combined_ppt %>% mutate(Year = year) %>% select(!year)
+combined_ppt$Year <- as.character(combined_ppt$Year)
+# Look at it to make sure we're all good
+glimpse(data_join)
+write_csv(data_join, "data_join.csv") # save combined data file
+
+```
+
+```{r}
+# get case data from CDC paper on 2017-2022 change
+new_case_def_data <- read_csv("lyme_data_cdc_CaseDefChange.csv")
+```
+
+2.  **Check it out:**
+
+```{r}
+# p1 <- ggplot(data = data_join) +
+#   geom_sf(aes(fill = Incidence), color = "black") +  # Fill based on incidence rate
+#   scale_fill_viridis_c(option = "C", name = "Incidence Rate") +  # Viridis color palette
+#   labs(title = "Lyme Disease Incidence in the US",
+#        subtitle = "Data from 2008 - 2022",
+#        caption = "Source: WHO, CDC") +
+#   theme_minimal() +
+#   theme(
+#     axis.text = element_blank(),
+#     axis.ticks = element_blank(),
+#     panel.grid = element_blank()
+#   )
+# p1
+```
+
+**Probabilistic Project: James, Nicholas, Kane, and Josiah**
+
+**Exploring the Impact of Climate Change on Disease Range Shift:** Are certain regions more susceptible to increased vector-borne diseases (such as malaria and Lyme) due to changing climate?
+
+**Questions:**
+
+1.  Will climate change disproportionately affect the spread of Lyme disease?
+
+2.  Will the shift in Lyme disease range be in the same direction as climate warming?
+
+3.  Which region(s) will fare much better or worse with climate change?
+
+4.  Will a warmer world translate to a sicker world?
+
+**Predictions:**
+
+1.  Warmer regions will become too warm, exceeding the thermal maxima of parasites/vectors, resulting in fewer cases in the future.
+
+2.  The shift in Lyme disease range won’t necessarily be in the direction of climate warming.
+
+3.  Cold regions will become warm enough for parasites/vectors to live, resulting in more cases.
+
+4.  Overall, a warmer world will not increase disease burden.
+
+**Changing infectious disease landscape:**
+
+Vector-borne diseases affect millions of people worldwide and account for 17% of all infectious diseases, resulting in about 700,000 deaths each year. They are caused by pathogens carried by vectors like mosquitoes, fleas, and ticks; examples are dengue, Lyme, and malaria. Vector-borne diseases were historically confined to specific areas, and the tropical and subtropical regions share the highest burden.  There are many indications that these diseases, restricted to some regions, are beginning to spread to novel, hitherto inhospitable areas (Moran et al., 2023). Climate change has been partly implicated in some of these changes in the distribution of these diseases and reserves the potential to exacerbate this effect further. For example, mosquito- and tick-borne diseases are projected to increase with warmer climates (Vonesch et al., 2016).
+
+Climate remains a significant problem for vector-borne disease management, as these diseases are sensitive to climate change (WHO-WMO, 2024), partly because most of their vectors are cold-blooded and can track environmental temperature quickly. Many studies have shown how overlaps between spatially distant diseased and free populations can be driven by climate change, thus increasing the shift and spread of diseases to new populations or species (Hurford et al., 2019; Talluto et al., 2017). Temperature, rainfall, and humidity influence the distribution and spread of diseases practically through their effect on the biology and ecology of the vectors and hosts. By 2100, average global temperatures will have risen by 1.0-3.5 degrees C, increasing the likelihood of many vector-borne diseases in new areas (Watson RT et al., 1995; Githeko, 2000). Our focus in this case is to exploit another mechanism that deals more with environmental suitability—where the environments are made safer or worse for parasites/vectors to thrive. 
+
+The poleward spread of vectors and vector-borne pathogens as climate warms in temperate zones may also be accompanied by poleward contraction of the most equatorial limits of these species if temperatures become too hot for them (Brownstein et al., 2005). Therefore, instead of this overlap between the infected populations and moving uninfected ones, we are proposing the movement of vectors/pathogens to new areas because climate change has just made them more suitable (McDermott, 2022). One possible evidence is that changing rain patterns have been reported to be expanding vectors’ range and their active periods. More recently, we have been experiencing shorter, warmer winters and longer summers, facilitating the increase in vector-borne diseases. For example, Lyme disease caused by ticks is now also occurring in the winter and is reportedly found in regions farther west and north than in the past. There are indications that these situations might become even worse with climate change. Beyond the capacity to spread diseases or increase their range, climate change might also have a disproportionate influence on the severity of diseases, especially if periods favorable for pathogens or their vectors end up being favored, just like it has been reported that tick season that used to be a summer thing now starts earlier, resulting in reported cases of tick-borne diseases in January and February.
+
+We are interested in predicting the probability of disease outbreaks of Lyme disease in the United States based on environmental and demographic factors. Using an online data repository, our task is to develop a probabilistic model that estimates the likelihood of a disease outbreak occurring in a specific region based on temperature, precipitation, population density, and historical outbreak data. For instance, given a set of environmental conditions in a specific region, what is the probability that a lyme disease outbreak will occur in the next five years?
+
+[Conceptual figure](https://docs.google.com/presentation/d/16MxoWuF64f0VKQCsirOXv5AKnzeerdze0Ck2LS5eHPw/edit#slide=id.g2ffa60dab12_0_50)
+
+**Data Source:**
+
+We can use the [Global Health Observatory Data Repository](https://www.who.int/data/gho) from the World Health Organization (WHO) or other similar repositories that provide global health, disease, and environmental data. Relevant datasets may include:
+
+-   Historical data on disease outbreaks (e.g., malaria, dengue, cholera).
+
+-   Environmental data, including temperature, precipitation, and humidity levels.
+
+-   Demographic data include population density, sanitation facilities, and healthcare access.
+
+Data Available:
+
+1.  Overall incidence rate from 1996 - 2022
+
+2.  Overall incidence rate by states from 2008 - 2022
+
+3.  Lyme disease cases  by months of disease onset from 2008 -2022
+
+4.  Lyme disease cases  by weeks of disease onset from 2008 -2022
+
+**Tasks:**
+
+1.  **Data Wrangling and EDA:**
+
+    -   Preprocess and clean the data to merge information from different datasets (e.g., environmental data with disease outbreak data).
+
+    -   Explore the distribution of disease outbreaks across regions and correlate them with environmental factors.
+
+2.  **Modeling the Probability of Disease Outbreaks:**
+
+    -   Build an ecological niche model to predict future vectors' possible distribution..
+
+    -   Build a probabilistic model, such as a Bayesian Network, logistic regression, or machine learning-based model, to estimate the likelihood of an outbreak based on features like temperature, rainfall, and population density.
+
+    -   Estimate the probability of an outbreak happening within a certain timeframe, given the current environmental conditions.
+
+3.  **Validation:**
+
+    -   Validate the model using historical outbreak data. Use cross-validation to assess the reliability of your probability predictions.
+
+    -   Evaluate your model's predictive power with metrics such as accuracy, precision, recall, and AUC-ROC curves.
+
+4.  **Interpretation and Insights:**
+
+    -   Identify which environmental factors have the highest predictive power for disease outbreaks.
+
+    -   Provide actionable insights, such as regions that are particularly vulnerable to outbreaks under specific conditions (e.g., regions with high rainfall and inadequate sanitation may be at greater risk for cholera outbreaks).
+
+<https://health.ucdavis.edu/news/headlines/experts-warn-climate-change-will-fuel-spread-of-infectious-diseases-/2024/03>
+
+<https://netec.org/2024/03/25/climate-change-and-infectious-diseases/#:~:text=Climate%2DSensitive%20Infectious%20Diseases,the%20spread%20of%20infectious%20diseases>.
+
+Use data from: <https://www.who.int/data/gho/data/indicators/indicator-details/GHO/total-number-of-malaria-cases-presumed-confirmed-cases>
+
+**Bonus ideas we can consider:**
+
+-   Investigate how climate change might influence the probability of future outbreaks by analyzing trends in environmental data over time.
+
+-   Extend the model to predict the severity of outbreaks (e.g., the number of cases) rather than just the occurrence.
+
+**Some extra notes:**
+
+Check out this link: <https://climahealth.info/hazard/diseases/>
+
+The hard tick, Ixodes scapularis, transmits Borrelia burgdorferis, a spirochaete, and the causative agent for Lyme disease - the most common vector-borne disease in the United States.
+
+The mosquitoes that transmit malaria are expanding northward, a climate-induced change. Changing rain patterns have led to more mosquitoes and a higher disease transmission rate. Surprisingly, locally acquired cases of malaria were reported last summer in Texas and Florida and all the way north in Maryland. These cases involved individuals who had not traveled outside the United States.\
+
+Tick-borne diseases account for over 80 percent of all reported vector-borne disease cases in the U.S. While Lyme disease is the most commonly reported tick-borne illness in the U.S., other reportable tick-borne diseases have also increased over the last 20 years.
+
+For example, a [March 2023 CDC report](https://www.cdc.gov/mmwr/volumes/72/wr/mm7211a1.htm) shows that cases of babesiosis are on the rise and are being reported in new geographic areas in the Northeast.
+
+Empirical observations and mathematical models show that climate warming can lead to the northern (or, more generally, poleward) spread of host species ranges and their corresponding diseases.
+
+Look this up: <https://github.com/mrmaxent/Maxent>
+
+For SDM model validation, see: <https://kuscholarworks.ku.edu/entities/publication/9b231d50-4d59-4038-ace7-53e1db263d82>
+
+Papers:\
+<https://pubmed.ncbi.nlm.nih.gov/27260548/>
+
+<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4342968/>
+
+Thought this was another interesting piece of literature that might be worth looking into.: <https://www.sciencedirect.com/science/article/pii/S1877959X23000432> (This actually might be a really important paper for how we are going to approach our project-- it’s long, but uses some cool mechanistic movement modeling with climate variables. Inspiration! Data for tick population stuff seems out of date, or privatized?)
+
+Sources for Data:
+
+<https://data.neonscience.org/data-products/DP1.10093.001> (Easy to pull from).
+
+<https://www.cdc.gov/ticks/data-research/facts-stats/tickborne-disease-surveillance-data-summary.html> (Still need to look into if this is useful or not).
+
+<https://www.hopkinslymetracker.org/explorer/> (Another sources. Still need to look into whether this data is useful or not, but it’s available! Includes Lyme disease cases, incident rates, and CDC tick data (by county)).
+
+[Tick History Data \| LSEG](https://www.lseg.com/en/data-analytics/market-data/data-feeds/tick-history?utm_content=Product%20Name%20-US-G-EN-ALL&utm_source=google&utm_medium=cpc&utm_campaign=748908_MarketDataFeedsBrandProductPaidSearch&elqCampaignId=20672&utm_term=tick%20history&gad_source=1&gclid=Cj0KCQjwurS3BhCGARIsADdUH51nmbpqZXIta_hUr24MT5RCdokbd1Sv9bbSMWcm8F40f9dwhVqhQWUaAk-uEALw_wcB&gclsrc=aw.ds) (Seems really dubious… paid for data, but might be able to request it? Not sure if this is worth the effort).
+
+<https://zenodo.org/records/6950531> (Dataset list of 289 blacklegged tick population data sets from other studies-- .xlsx available).
+
+<https://zenodo.org/records/10081292> (Citizen science data of tick observations).
+
+<https://www.cdc.gov/lyme/data-research/facts-stats/surveillance-data-1.html> (Lyme disease incident reports and case counts).
+
+Notes 2024-11-15:
+
+plot the error between average rate
