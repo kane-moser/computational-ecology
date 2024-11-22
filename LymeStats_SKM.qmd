@@ -1,0 +1,122 @@
+---
+title: "Lyme stats project code update"
+author: "Kane Moser"
+format: pdf
+editor: visual
+---
+
+## [Plan]{.underline}
+
+Here are the variables/parameters we want to have:
+
+$X_{t,s}$: Lyme disease annual case incidence per state
+
+$\Delta X_{t,s} = X_{t,s} - X_{t-1,s}$: delta X or change in incidence per state from year to year
+
+$r_{t,s} = \frac{\Delta X_{t,s}}{X_{t-1,s}}$: rate of change in incidence per state from year to year
+
+$\overline{r}_s = \frac{1}{14} \sum{r_{t,s}}$: mean rate of incidence change per state (this will be calculated from 2008-2021 data only)
+
+$\tilde{X}_{t,s} = X_{t,s} \overline{r}_s$: predicted annual incidence based on previous step
+
+$k_s = \frac{X_{t,s} - \tilde{X}_{t,s}}{\tilde{X}_{t,s}}$: difference between actual and predicted incidence (discrepancy presumably caused by change in case def.
+
+Goal is to compare the distribution of $k_s$ for high and low incidence areas to then be able to test some simple hypotheses.
+
+Possible hypotheses to test:
+
+1.  We expect the mean of the distribution of $k_s$ for low incidence states to be centered on 0.
+2.  We expect the mean of the distribution of $k_s$ for high incidence states to *not* be centered on 0.
+3.  We expect the mean of the distribution of $k_s$ for high and low incidence states to be different from each other.
+
+### 1. Load packages and clean data:
+
+```{r load data}
+library(tidyverse)
+
+data <- read_csv("data/Lyme_Disease_Incidence_Rates_by_State_or_Locality.csv")
+# Remove special characters from "State" column
+data$State <- str_remove_all(data$State, "[^[:alnum:] ]")
+# Put data in long format
+data <- data %>% pivot_longer(!State, names_to = "Year", values_to = "Incidence")
+
+jurisdiction_data <- read_csv("data/Lyme_jurisdiction_data.csv") %>%
+  rename("State" = "states")
+
+data <- data %>%
+  left_join(jurisdiction_data, by="State") %>%
+  select(State,Year,Incidence,jurisdiction) %>%
+  filter(Incidence > 0)
+```
+
+### 2. Calculate variable values
+
+```{r}
+# calculate delta_X
+data <- data %>%
+  group_by(State) %>%
+  mutate(X = Incidence) %>%
+  mutate(delta_X = X - lag(X)) %>%
+  ungroup()
+
+# calculate r_t
+data <- data %>%
+  group_by(State) %>%
+  mutate(r = delta_X / lag(X)) %>%
+  ungroup()
+
+# calculate mean rate of incidence change per state, mean_r
+mean_rates <- data %>%
+  filter(Year >= 2008, Year <= 2021) %>% # filter years for 2008-2021
+  group_by(State) %>%
+  summarise(mean_r = mean(r, na.rm = TRUE))
+
+# join mean rates back to main data
+data <- data %>%
+  left_join(mean_rates, by = "State")
+```
+
+```{r}
+# Calculate X_pred and k
+# predicted value for 2022, X_pred
+state_data <- data %>%
+  group_by(State) %>%
+  mutate(X_pred = ifelse(Year == 2022, lag(X) * mean_r, NA)) %>%
+  ungroup() %>%
+  na.omit()
+
+# difference between predicted value and actual value, k
+state_data <- state_data %>%
+  mutate(k = (X - X_pred) / X_pred) %>%
+  filter(!is.infinite(k), !is.na(k))
+```
+
+### Compare the distribution of k for low and high incidence states
+
+```{r}
+p1 <- ggplot(state_data, aes(x=k, fill = jurisdiction)) +
+  geom_histogram(color = "grey40", position="dodge") +
+  #facet_wrap(~jurisdiction) +
+  theme_minimal() +
+  scale_fill_viridis_d()
+p1
+```
+
+### Hypothesis testing
+
+```{r}
+low <- state_data %>% filter(jurisdiction == "low")
+high <- state_data %>% filter(jurisdiction == "high")
+summary(low)
+summary(high)
+
+t.test(low$k, mu=0)
+```
+
+```{r}
+t.test(high$k, mu = 0)
+```
+
+```{r}
+t.test(k ~ jurisdiction, state_data)
+```
