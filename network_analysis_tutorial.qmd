@@ -1,0 +1,29 @@
+---
+title: "Network Analysis in R Tutorial"
+format: html
+editor: visual
+---
+
+## 
+
+```{r}
+# activate packages
+library(flextable)
+library(GGally)
+library(ggraph)
+library(gutenbergr)
+library(igraph)
+library(Matrix)
+library(network)
+library(quanteda)
+library(sna)
+library(tidygraph)
+library(tidyverse)
+library(tm)
+library(tibble)
+```
+
+```{r}
+# load data
+net_dat <- read.delim("https://slcladal.github.io/data/romeo_tidy.txt", sep = "\t")
+```

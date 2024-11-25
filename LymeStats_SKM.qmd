@@ -120,3 +120,68 @@ t.test(high$k, mu = 0)
 ```{r}
 t.test(k ~ jurisdiction, state_data)
 ```
+
+### Uncertainty Quantification - Markov Chain Monte Carlo 
+
+```{r}
+low_k <- state_data %>% filter(jurisdiction == "low") %>% pull(k)
+high_k <- state_data %>% filter(jurisdiction == "high") %>% pull(k)
+
+# Metropolis-Hastings function
+mh_sampler <- function(data, n_iter = 10000, proposal_sd = 0.1) {
+  # Initialize parameters
+  mu_current <- mean(data)  # Start at the sample mean
+  samples <- numeric(n_iter)  # Store samples
+  sigma <- sd(data)          # Fixed standard deviation (from data)
+  
+  # Prior: Normal(0, 10^2)
+  prior <- function(mu) {
+    dnorm(mu, mean = 0, sd = 10, log = TRUE)
+  }
+  
+  # Likelihood: Normal(mu, sigma^2)
+  likelihood <- function(mu) {
+    sum(dnorm(data, mean = mu, sd = sigma, log = TRUE))
+  }
+  
+  # Posterior: likelihood * prior
+  posterior <- function(mu) {
+    likelihood(mu) + prior(mu)  # Log-scale
+  }
+  
+  # MCMC Sampling
+  for (i in 1:n_iter) {
+    # Propose new mu
+    mu_proposed <- rnorm(1, mean = mu_current, sd = proposal_sd)
+    
+    # Acceptance ratio
+    R <- exp(posterior(mu_proposed) - posterior(mu_current))
+    
+    # Accept or reject
+    if (runif(1) < R) {
+      mu_current <- mu_proposed
+    }
+    
+    # Store the current sample
+    samples[i] <- mu_current
+  }
+  
+  return(samples)
+}
+
+# Run the sampler for both groups
+low_samples <- mh_sampler(low_k, n_iter = 10000)
+high_samples <- mh_sampler(high_k, n_iter = 10000)
+
+# Summarize results
+summary(low_samples)
+summary(high_samples)
+
+# Compute posterior difference
+diff_samples <- high_samples - low_samples
+summary(diff_samples)
+
+# Plot results
+hist(diff_samples, breaks = 30, main = "Posterior Difference in Means", xlab = "mu_high - mu_low")
+abline(v = 0, col = "red", lwd = 2)
+```
